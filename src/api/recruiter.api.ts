@@ -1,3 +1,4 @@
+import type { ApiResponse } from "@/api/auth.api";
 import apiClient from "@/lib/apiClient";
 
 export type Assessment = {
@@ -12,8 +13,6 @@ export type Assessment = {
   startAt?: string | null;
   endAt?: string | null;
 };
-
-type ApiResponse<T> = { success: boolean; data: T; message?: string };
 
 export const getAssessments = () =>
   apiClient<ApiResponse<Assessment[] | { assessments: Assessment[] }>>(
@@ -104,3 +103,11 @@ export const declineInvitation = (invitationId: string) =>
     method: "PATCH",
     body: {},
   });
+
+export type ReportData = Record<string, unknown>;
+
+export const getRecruiterReport = () =>
+  apiClient<ApiResponse<ReportData>>("/reports/overview");
+
+export const getAdminReport = () =>
+  apiClient<ApiResponse<ReportData>>("/reports/admin/overview");

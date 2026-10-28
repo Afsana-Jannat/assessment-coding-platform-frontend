@@ -14,7 +14,17 @@ export type User = {
   recruiter?: { id: string; companyName?: string | null } | null;
 };
 
-type ApiResponse<T> = { success: boolean; data: T; message?: string };
+export type ApiResponse<T> = {
+  success: boolean;
+  data: T;
+  message?: string;
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+};
 
 export const login = async (payload: LoginPayload) => {
   const response = await apiClient<ApiResponse<TokenResponse>>("/auth/login", {
@@ -104,12 +114,12 @@ export type CandidateProfile = {
 };
 
 export const getCandidateProfile = () =>
-  apiClient<ApiResponse<CandidateProfile>>("/candidate/me");
+  apiClient<ApiResponse<CandidateProfile>>("/candidates/me");
 
 export const updateCandidateProfile = (
   payload: Partial<Omit<CandidateProfile, "id" | "email" | "resumeUrl">>,
 ) =>
-  apiClient<ApiResponse<CandidateProfile>>("/candidate/me", {
+  apiClient<ApiResponse<CandidateProfile>>("/candidates/me", {
     method: "PATCH",
     body: payload,
   });
@@ -117,7 +127,7 @@ export const updateCandidateProfile = (
 export const uploadCandidateResume = (file: File) => {
   const body = new FormData();
   body.append("resume", file);
-  return apiClient<ApiResponse<CandidateProfile>>("/candidate/resume", {
+  return apiClient<ApiResponse<CandidateProfile>>("/candidates/resume", {
     method: "POST",
     body,
   });

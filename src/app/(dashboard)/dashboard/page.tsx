@@ -194,6 +194,14 @@ export default function DashboardPage() {
               : "Your invited assessments and attempts live here."}
           </p>
         </div>
+        {(user.role === "RECRUITER" || user.role === "ADMIN") && (
+          <Link
+            href="/reports"
+            className="rounded-lg border px-4 py-2.5 text-center text-sm font-medium hover:bg-muted"
+          >
+            View reports
+          </Link>
+        )}
         {user.role === "RECRUITER" && (
           <button
             type="button"

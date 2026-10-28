@@ -16,6 +16,7 @@ type Attempt = {
   status: string;
   expiresAt: string;
   assessment: { id: string; title: string; durationMinutes: number };
+  questions?: Question[];
 };
 
 export default function AttemptPage() {
@@ -54,17 +55,13 @@ export default function AttemptPage() {
 
   useEffect(() => {
     if (!attempt) return;
-    apiClient<{ data: { questions: Question[] } }>(
-      `/assessments/${attempt.assessment.id}/questions`,
-    )
-      .then((response) => setQuestions(response.data.questions))
-      .catch((error) =>
-        setMessage(
-          error instanceof Error
-            ? error.message
-            : "Questions are not available for this attempt",
-        ),
-      );
+    if (attempt.questions) {
+      setQuestions(attempt.questions);
+      return;
+    }
+    setMessage(
+      "The backend did not include questions in this attempt. Please ask the administrator to enable the candidate attempt questions endpoint.",
+    );
   }, [attempt]);
 
   async function saveAnswer(
