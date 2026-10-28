@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
-import { login } from "@/api/auth.api";
+import { getAuthenticatedUser, getRoleHome, login } from "@/api/auth.api";
 import GoogleLoginButton from "@/components/auth/google-login-button";
 
 export default function LoginForm() {
@@ -18,7 +18,8 @@ export default function LoginForm() {
     setError("");
     try {
       await login(form);
-      router.push("/dashboard");
+      const user = await getAuthenticatedUser();
+      router.push(getRoleHome(user.role));
       router.refresh();
     } catch (requestError) {
       setError(

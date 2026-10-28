@@ -25,6 +25,7 @@ export default function AttemptPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
 
   useEffect(() => {
     apiClient<{ data: Attempt }>(`/attempts/${attemptId}`)
@@ -38,19 +39,50 @@ export default function AttemptPage() {
 
   useEffect(() => {
     if (!attempt) return;
+    const updateRemaining = () => {
+      const remaining = Math.max(
+        0,
+        Math.floor((new Date(attempt.expiresAt).getTime() - Date.now()) / 1000),
+      );
+      setSecondsLeft(remaining);
+      if (remaining === 0) setMessage("This attempt has expired.");
+    };
+    updateRemaining();
+    const timer = window.setInterval(updateRemaining, 1000);
+    return () => window.clearInterval(timer);
+  }, [attempt]);
+
+  useEffect(() => {
+    if (!attempt) return;
     apiClient<{ data: { questions: Question[] } }>(
       `/assessments/${attempt.assessment.id}/questions`,
     )
       .then((response) => setQuestions(response.data.questions))
-      .catch(() => setQuestions([]));
+      .catch((error) =>
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "Questions are not available for this attempt",
+        ),
+      );
   }, [attempt]);
 
-  async function saveAnswer(questionId: string, value: string) {
-    setAnswers((current) => ({ ...current, [questionId]: value }));
+  async function saveAnswer(
+    question: Question,
+    value: string,
+    answerText = "",
+  ) {
+    setAnswers((current) => ({ ...current, [question.id]: value }));
     try {
       await apiClient(`/answers`, {
         method: "POST",
-        body: { attemptId, questionId, selectedOptionId: value },
+        body: {
+          attemptId,
+          questionId: question.id,
+          ...(question.type === "MCQ"
+            ? { selectedOptionId: value }
+            : { answerText: answerText || value }),
+        },
       });
     } catch (error) {
       setMessage(
@@ -131,7 +163,7 @@ export default function AttemptPage() {
                       type="radio"
                       name={question.id}
                       checked={answers[question.id] === option.id}
-                      onChange={() => saveAnswer(question.id, option.id)}
+                      onChange={() => saveAnswer(question, option.id)}
                     />
                     {option.optionText}
                   </label>
@@ -147,6 +179,7 @@ export default function AttemptPage() {
                     [question.id]: event.target.value,
                   }))
                 }
+                onBlur={(event) => saveAnswer(question, event.target.value)}
                 className="mt-5 min-h-32 w-full rounded-lg border bg-background p-3"
                 placeholder="Write your answer..."
               />
@@ -155,9 +188,12 @@ export default function AttemptPage() {
         ))}
         <button
           type="submit"
+          disabled={attempt.status !== "IN_PROGRESS" || secondsLeft === 0}
           className="h-11 w-full rounded-lg bg-primary font-medium text-primary-foreground"
         >
-          Submit assessment
+          {secondsLeft === null
+            ? "Submit assessment"
+            : `Submit assessment (${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, "0")})`}
         </button>
       </form>
     </main>

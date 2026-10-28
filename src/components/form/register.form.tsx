@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
-import { register } from "@/api/auth.api";
+import { getAuthenticatedUser, getRoleHome, register } from "@/api/auth.api";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -31,7 +31,8 @@ export function RegisterForm() {
         email: form.email,
         password: form.password,
       });
-      router.push("/dashboard");
+      const user = await getAuthenticatedUser();
+      router.push(getRoleHome(user.role));
       router.refresh();
     } catch (requestError) {
       setError(

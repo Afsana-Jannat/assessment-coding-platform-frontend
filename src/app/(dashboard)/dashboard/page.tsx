@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { getMe, type User } from "@/api/auth.api";
@@ -216,6 +217,12 @@ export default function DashboardPage() {
                     {assessment.totalMarks} marks · pass at{" "}
                     {assessment.passingMarks}
                   </p>
+                  <Link
+                    href={`/assessments/${assessment.id}`}
+                    className="mt-3 inline-block text-sm font-medium text-primary hover:underline"
+                  >
+                    Manage questions
+                  </Link>
                 </div>
                 {assessment.status === "DRAFT" && (
                   <button
@@ -247,6 +254,17 @@ export default function DashboardPage() {
               </article>
             ))
           )}
+        </section>
+      ) : user.role === "ADMIN" ? (
+        <section className="mt-10 max-w-2xl rounded-2xl border bg-card p-6">
+          <p className="text-sm font-medium text-primary">Administration</p>
+          <h2 className="mt-2 text-xl font-semibold">
+            Manage the assessment platform
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Admin tools are available from the backend. Your account is
+            authenticated with administrator permissions.
+          </p>
         </section>
       ) : (
         <section className="mt-10 max-w-xl rounded-2xl border bg-card p-6">

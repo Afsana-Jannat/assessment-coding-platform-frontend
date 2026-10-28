@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={inter.variable}>
-      <body className="min-h-screen font-sans">
+      <body className="min-h-screen font-sans" suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>
     </html>

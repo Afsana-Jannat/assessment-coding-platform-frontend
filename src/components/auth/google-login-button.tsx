@@ -3,7 +3,7 @@
 import { GoogleLogin } from "@react-oauth/google";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { googleLogin } from "@/api/auth.api";
+import { getAuthenticatedUser, getRoleHome, googleLogin } from "@/api/auth.api";
 
 export default function GoogleLoginButton() {
   const router = useRouter();
@@ -30,7 +30,8 @@ export default function GoogleLoginButton() {
             }
             try {
               await googleLogin(credential);
-              router.push("/dashboard");
+              const user = await getAuthenticatedUser();
+              router.push(getRoleHome(user.role));
               router.refresh();
             } catch (requestError) {
               setError(

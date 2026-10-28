@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getMe, type User } from "@/api/auth.api";
+import { getMe, logout, type User } from "@/api/auth.api";
 
 export default function Header() {
   const [user, setUser] = useState<User | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     getMe()
@@ -30,12 +32,29 @@ export default function Header() {
             How it works
           </Link>
           {user ? (
-            <Link
-              href="/dashboard"
-              className="rounded-lg bg-primary px-4 py-2 text-primary-foreground"
-            >
-              Dashboard
-            </Link>
+            <>
+              <span className="hidden text-xs text-muted-foreground sm:inline">
+                {user.role.toLowerCase()}
+              </span>
+              <Link
+                href="/dashboard"
+                className="rounded-lg bg-primary px-4 py-2 text-primary-foreground"
+              >
+                Dashboard
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  logout();
+                  setUser(null);
+                  router.push("/login");
+                  router.refresh();
+                }}
+                className="rounded-lg border px-4 py-2 hover:bg-muted"
+              >
+                Sign out
+              </button>
+            </>
           ) : (
             <Link
               href="/login"

@@ -2,9 +2,10 @@ import { ofetch } from "ofetch";
 
 const apiBaseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000";
+const baseURL = `${apiBaseUrl.replace(/\/$/, "")}/api/v1`;
 
 const apiClient = ofetch.create({
-  baseURL: `${apiBaseUrl.replace(/\/$/, "")}/api/v1`,
+  baseURL,
   credentials: "include",
   headers: {
     Accept: "application/json",

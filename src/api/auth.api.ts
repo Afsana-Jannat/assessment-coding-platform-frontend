@@ -25,6 +25,11 @@ export const login = async (payload: LoginPayload) => {
   return response;
 };
 
+export const getAuthenticatedUser = async () => {
+  const response = await getMe();
+  return response.data;
+};
+
 export const register = async (payload: RegisterPayload) => {
   const response = await apiClient<
     ApiResponse<TokenResponse & { user: User; candidate: unknown }>
@@ -76,4 +81,10 @@ export const logout = () => {
     window.sessionStorage.removeItem("assessment_access_token");
     window.sessionStorage.removeItem("assessment_refresh_token");
   }
+};
+
+export const getRoleHome = (role: User["role"]) => {
+  if (role === "ADMIN") return "/dashboard?view=admin";
+  if (role === "RECRUITER") return "/dashboard?view=recruiter";
+  return "/dashboard?view=candidate";
 };
