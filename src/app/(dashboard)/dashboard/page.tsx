@@ -6,13 +6,77 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { getMe, type User } from "@/api/auth.api";
 import {
   type Assessment,
+  acceptInvitation,
   createAssessment,
+  createInvitation,
+  declineInvitation,
   getAssessments,
   publishAssessment,
 } from "@/api/recruiter.api";
 import apiClient from "@/lib/apiClient";
 
 type Attempt = { id: string; expiresAt: string; status: string };
+
+function InvitationActions() {
+  const [invitationId, setInvitationId] = useState("");
+  const [message, setMessage] = useState("");
+  const [pending, setPending] = useState(false);
+
+  async function respond(action: "accept" | "decline") {
+    if (!invitationId.trim()) return;
+    setPending(true);
+    setMessage("");
+    try {
+      const request =
+        action === "accept"
+          ? acceptInvitation(invitationId.trim())
+          : declineInvitation(invitationId.trim());
+      await request;
+      setMessage(
+        action === "accept"
+          ? "Invitation accepted. You can now start the assessment."
+          : "Invitation declined.",
+      );
+      setInvitationId("");
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Could not update invitation",
+      );
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 space-y-3">
+      <input
+        value={invitationId}
+        onChange={(event) => setInvitationId(event.target.value)}
+        placeholder="Invitation UUID"
+        className="h-11 w-full rounded-lg border bg-background px-3"
+      />
+      <div className="flex gap-3">
+        <button
+          type="button"
+          disabled={pending || !invitationId.trim()}
+          onClick={() => respond("accept")}
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+        >
+          Accept
+        </button>
+        <button
+          type="button"
+          disabled={pending || !invitationId.trim()}
+          onClick={() => respond("decline")}
+          className="rounded-lg border px-4 py-2 text-sm disabled:opacity-60"
+        >
+          Decline
+        </button>
+      </div>
+      {message && <p className="text-sm text-muted-foreground">{message}</p>}
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -21,6 +85,10 @@ export default function DashboardPage() {
   const [assessmentId, setAssessmentId] = useState("");
   const [message, setMessage] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  const [invitingAssessmentId, setInvitingAssessmentId] = useState<
+    string | null
+  >(null);
+  const [candidateId, setCandidateId] = useState("");
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -85,6 +153,24 @@ export default function DashboardPage() {
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Could not start assessment",
+      );
+    }
+  }
+
+  async function inviteCandidate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!invitingAssessmentId) return;
+    try {
+      await createInvitation({
+        candidateId: candidateId.trim(),
+        assessmentId: invitingAssessmentId,
+      });
+      setCandidateId("");
+      setInvitingAssessmentId(null);
+      setMessage("Candidate invited successfully.");
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Could not invite candidate",
       );
     }
   }
@@ -225,34 +311,89 @@ export default function DashboardPage() {
                   </Link>
                 </div>
                 {assessment.status === "DRAFT" && (
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        publishAssessment(assessment.id)
+                          .then(() =>
+                            setAssessments((current) =>
+                              current.map((item) =>
+                                item.id === assessment.id
+                                  ? { ...item, status: "PUBLISHED" }
+                                  : item,
+                              ),
+                            ),
+                          )
+                          .catch((error) =>
+                            setMessage(
+                              error instanceof Error
+                                ? error.message
+                                : "Could not publish assessment",
+                            ),
+                          )
+                      }
+                      className="rounded-lg border px-4 py-2 text-sm hover:bg-muted"
+                    >
+                      Publish
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInvitingAssessmentId(assessment.id)}
+                      className="rounded-lg border px-4 py-2 text-sm hover:bg-muted"
+                    >
+                      Invite candidate
+                    </button>
+                  </div>
+                )}
+                {assessment.status !== "DRAFT" && (
                   <button
                     type="button"
-                    onClick={() =>
-                      publishAssessment(assessment.id)
-                        .then(() =>
-                          setAssessments((current) =>
-                            current.map((item) =>
-                              item.id === assessment.id
-                                ? { ...item, status: "PUBLISHED" }
-                                : item,
-                            ),
-                          ),
-                        )
-                        .catch((error) =>
-                          setMessage(
-                            error instanceof Error
-                              ? error.message
-                              : "Could not publish assessment",
-                          ),
-                        )
-                    }
+                    onClick={() => setInvitingAssessmentId(assessment.id)}
                     className="rounded-lg border px-4 py-2 text-sm hover:bg-muted"
                   >
-                    Publish
+                    Invite candidate
                   </button>
                 )}
               </article>
             ))
+          )}
+          {invitingAssessmentId && (
+            <form
+              onSubmit={inviteCandidate}
+              className="rounded-2xl border bg-card p-5"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="font-semibold">Invite a candidate</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Paste the candidate UUID from the backend candidate record.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setInvitingAssessmentId(null)}
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Cancel
+                </button>
+              </div>
+              <div className="mt-4 flex gap-3">
+                <input
+                  required
+                  value={candidateId}
+                  onChange={(event) => setCandidateId(event.target.value)}
+                  placeholder="Candidate UUID"
+                  className="h-11 min-w-0 flex-1 rounded-lg border bg-background px-3"
+                />
+                <button
+                  type="submit"
+                  className="rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground"
+                >
+                  Send invite
+                </button>
+              </div>
+            </form>
           )}
         </section>
       ) : user.role === "ADMIN" ? (
@@ -293,6 +434,13 @@ export default function DashboardPage() {
               Start
             </button>
           </form>
+          <div className="mt-8 border-t pt-6">
+            <h2 className="font-semibold">Have an invitation?</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Accept or decline an invitation using its ID.
+            </p>
+            <InvitationActions />
+          </div>
         </section>
       )}
     </main>

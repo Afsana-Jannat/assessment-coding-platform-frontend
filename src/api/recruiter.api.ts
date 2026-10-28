@@ -72,3 +72,35 @@ export const createQuestion = (
     method: "POST",
     body: payload,
   });
+
+export type Invitation = {
+  id: string;
+  status: string;
+  message?: string | null;
+  expiresAt?: string | null;
+  assessment?: { id: string; title: string };
+  candidate?: { id: string; name?: string; email?: string };
+};
+
+export const createInvitation = (payload: {
+  candidateId: string;
+  assessmentId: string;
+  message?: string;
+  expiresAt?: string;
+}) =>
+  apiClient<ApiResponse<Invitation>>("/invitations", {
+    method: "POST",
+    body: payload,
+  });
+
+export const acceptInvitation = (invitationId: string) =>
+  apiClient<ApiResponse<Invitation>>(`/invitations/${invitationId}/accept`, {
+    method: "PATCH",
+    body: {},
+  });
+
+export const declineInvitation = (invitationId: string) =>
+  apiClient<ApiResponse<Invitation>>(`/invitations/${invitationId}/decline`, {
+    method: "PATCH",
+    body: {},
+  });
