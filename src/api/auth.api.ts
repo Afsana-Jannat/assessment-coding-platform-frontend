@@ -88,3 +88,37 @@ export const getRoleHome = (role: User["role"]) => {
   if (role === "RECRUITER") return "/dashboard?view=recruiter";
   return "/dashboard?view=candidate";
 };
+
+export type CandidateProfile = {
+  id: string;
+  name: string;
+  email?: string;
+  skills?: string[];
+  experience?: string | null;
+  education?: string | null;
+  phone?: string | null;
+  dateOfBirth?: string | null;
+  gender?: "MALE" | "FEMALE" | "OTHER" | null;
+  address?: string | null;
+  resumeUrl?: string | null;
+};
+
+export const getCandidateProfile = () =>
+  apiClient<ApiResponse<CandidateProfile>>("/candidate/me");
+
+export const updateCandidateProfile = (
+  payload: Partial<Omit<CandidateProfile, "id" | "email" | "resumeUrl">>,
+) =>
+  apiClient<ApiResponse<CandidateProfile>>("/candidate/me", {
+    method: "PATCH",
+    body: payload,
+  });
+
+export const uploadCandidateResume = (file: File) => {
+  const body = new FormData();
+  body.append("resume", file);
+  return apiClient<ApiResponse<CandidateProfile>>("/candidate/resume", {
+    method: "POST",
+    body,
+  });
+};

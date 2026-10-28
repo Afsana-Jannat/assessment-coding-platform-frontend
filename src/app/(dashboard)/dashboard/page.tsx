@@ -269,6 +269,12 @@ export default function DashboardPage() {
       ) : (
         <section className="mt-10 max-w-xl rounded-2xl border bg-card p-6">
           <h2 className="text-xl font-semibold">Start an invited assessment</h2>
+          <Link
+            href="/profile"
+            className="mt-4 inline-block text-sm font-medium text-primary hover:underline"
+          >
+            Complete your candidate profile →
+          </Link>
           <p className="mt-2 text-sm text-muted-foreground">
             Paste the assessment ID from your invitation.
           </p>
