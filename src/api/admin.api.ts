@@ -79,6 +79,39 @@ export const getAdminRecruiters = (params: ListParams) =>
     `/admin/recruiters?${queryString(params)}`,
   );
 
+export const getAdminCandidate = (candidateId: string) =>
+  apiClient<
+    ApiResponse<
+      AdminCandidate & {
+        address?: string | null;
+        gender?: "MALE" | "FEMALE" | "OTHER" | null;
+        dateOfBirth?: string | null;
+        skills?: string[];
+        experience?: string | null;
+        education?: string | null;
+        resumeUrl?: string | null;
+      }
+    >
+  >(`/admin/candidates/${candidateId}`);
+
+export const updateAdminCandidate = (
+  candidateId: string,
+  payload: {
+    name?: string;
+    phone?: string | null;
+    address?: string | null;
+    gender?: "MALE" | "FEMALE" | "OTHER" | null;
+    dateOfBirth?: string | null;
+    skills?: string[];
+    experience?: string | null;
+    education?: string | null;
+  },
+) =>
+  apiClient<ApiResponse<AdminCandidate>>(`/admin/candidates/${candidateId}`, {
+    method: "PATCH",
+    body: payload,
+  });
+
 export const createRecruiterAccount = (payload: {
   name: string;
   email: string;

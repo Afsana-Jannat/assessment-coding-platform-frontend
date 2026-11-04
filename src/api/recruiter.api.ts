@@ -32,6 +32,29 @@ export const createAssessment = (payload: {
     body: payload,
   });
 
+export const updateAssessment = (
+  assessmentId: string,
+  payload: Partial<{
+    title: string;
+    description: string | null;
+    instructions: string | null;
+    durationMinutes: number;
+    totalMarks: number;
+    passingMarks: number;
+    startAt: string | null;
+    endAt: string | null;
+  }>,
+) =>
+  apiClient<ApiResponse<Assessment>>(`/assessments/${assessmentId}`, {
+    method: "PATCH",
+    body: payload,
+  });
+
+export const deleteAssessment = (assessmentId: string) =>
+  apiClient<ApiResponse<Assessment>>(`/assessments/${assessmentId}`, {
+    method: "DELETE",
+  });
+
 export const publishAssessment = (assessmentId: string) =>
   apiClient<ApiResponse<Assessment>>(`/assessments/${assessmentId}/publish`, {
     method: "PATCH",
@@ -71,6 +94,34 @@ export const createQuestion = (
     method: "POST",
     body: payload,
   });
+
+export const updateQuestion = (
+  assessmentId: string,
+  questionId: string,
+  payload: Partial<{
+    questionText: string;
+    type: Question["type"];
+    marks: number;
+    order: number;
+    difficulty: Question["difficulty"];
+    explanation: string | null;
+    referenceAnswer: string | null;
+    options: { optionText: string; isCorrect: boolean }[];
+  }>,
+) =>
+  apiClient<ApiResponse<Question>>(
+    `/assessments/${assessmentId}/questions/${questionId}`,
+    {
+      method: "PATCH",
+      body: payload,
+    },
+  );
+
+export const deleteQuestion = (assessmentId: string, questionId: string) =>
+  apiClient<ApiResponse<Question>>(
+    `/assessments/${assessmentId}/questions/${questionId}`,
+    { method: "DELETE" },
+  );
 
 export type Invitation = {
   id: string;
@@ -164,6 +215,31 @@ export const createStripeCheckout = (assessmentId: string) =>
       body: { assessmentId },
     },
   );
+
+export type BkashPayment = {
+  paymentID: string;
+  bkashURL: string;
+  transactionStatus?: string;
+  amount?: string;
+  currency?: string;
+  statusCode?: string;
+  statusMessage?: string;
+};
+
+export const createBkashPayment = (assessmentId: string) =>
+  apiClient<ApiResponse<BkashPayment>>("/payments/bkash/create", {
+    method: "POST",
+    body: { assessmentId },
+  });
+
+export const executeBkashPayment = (paymentID: string) =>
+  apiClient<ApiResponse<BkashPayment>>("/payments/bkash/execute", {
+    method: "POST",
+    body: { paymentID },
+  });
+
+export const queryBkashPayment = (paymentID: string) =>
+  apiClient<ApiResponse<BkashPayment>>(`/payments/bkash/query/${paymentID}`);
 
 export type Evaluation = {
   id: string;

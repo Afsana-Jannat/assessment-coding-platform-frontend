@@ -8,6 +8,7 @@ import {
   type Assessment,
   acceptInvitation,
   createAssessment,
+  createBkashPayment,
   createInvitation,
   createStripeCheckout,
   declineInvitation,
@@ -185,10 +186,30 @@ export default function DashboardPage() {
       if (!data.checkoutUrl) {
         throw new Error("The payment provider did not return a checkout URL.");
       }
+
       window.location.assign(data.checkoutUrl);
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Could not start checkout",
+      );
+      setPaymentPendingId("");
+    }
+  }
+
+  async function startBkashPayment(assessment: Assessment) {
+    setPaymentPendingId(assessment.id);
+    setMessage("");
+    try {
+      const { data } = await createBkashPayment(assessment.id);
+      if (!data.bkashURL) {
+        throw new Error("The payment provider did not return a checkout URL.");
+      }
+      window.location.assign(data.bkashURL);
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not start bKash checkout",
       );
       setPaymentPendingId("");
     }
@@ -404,6 +425,16 @@ export default function DashboardPage() {
                   {paymentPendingId === assessment.id
                     ? "Opening checkout..."
                     : "Pay BDT 100 (Stripe)"}
+                </button>
+                <button
+                  type="button"
+                  disabled={paymentPendingId === assessment.id}
+                  onClick={() => startBkashPayment(assessment)}
+                  className="rounded-lg border px-4 py-2 text-sm hover:bg-muted disabled:opacity-50"
+                >
+                  {paymentPendingId === assessment.id
+                    ? "Opening bKash..."
+                    : "Pay BDT 100 (bKash)"}
                 </button>
               </article>
             ))

@@ -8,9 +8,11 @@ import {
   type AdminRecruiter,
   type AuditLog,
   createRecruiterAccount,
+  getAdminCandidate,
   getAdminCandidates,
   getAdminRecruiters,
   getAuditLogs,
+  updateAdminCandidate,
   updateCandidateStatus,
   updateRecruiterStatus,
 } from "@/api/admin.api";
@@ -56,6 +58,17 @@ export default function AdminWorkspacePage() {
     companyWebsite: "",
     companyDescription: "",
   });
+  const [selectedCandidate, setSelectedCandidate] =
+    useState<AdminCandidate | null>(null);
+  const [candidateForm, setCandidateForm] = useState({
+    name: "",
+    phone: "",
+    address: "",
+    skills: "",
+    experience: "",
+    education: "",
+  });
+  const [candidatePending, setCandidatePending] = useState(false);
 
   useEffect(() => {
     getMe()
@@ -241,6 +254,61 @@ export default function AdminWorkspacePage() {
     }
   }
 
+  async function editCandidate(candidate: AdminCandidate) {
+    setMessage("");
+    try {
+      const { data } = await getAdminCandidate(candidate.id);
+      setSelectedCandidate(data);
+      setCandidateForm({
+        name: data.name,
+        phone: data.phone ?? "",
+        address: data.address ?? "",
+        skills: data.skills?.join(", ") ?? "",
+        experience: data.experience ?? "",
+        education: data.education ?? "",
+      });
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Could not load candidate",
+      );
+    }
+  }
+
+  async function saveCandidate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedCandidate) return;
+    setCandidatePending(true);
+    setMessage("");
+    try {
+      const { data } = await updateAdminCandidate(selectedCandidate.id, {
+        name: candidateForm.name.trim(),
+        phone: candidateForm.phone.trim() || null,
+        address: candidateForm.address.trim() || null,
+        skills: candidateForm.skills
+          .split(",")
+          .map((skill) => skill.trim())
+          .filter(Boolean),
+        experience: candidateForm.experience.trim() || null,
+        education: candidateForm.education.trim() || null,
+      });
+      setCandidates((current) =>
+        current.map((item) =>
+          item.id === data.id
+            ? { ...item, name: data.name, phone: data.phone }
+            : item,
+        ),
+      );
+      setSelectedCandidate(null);
+      setMessage("Candidate profile updated.");
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Could not update candidate",
+      );
+    } finally {
+      setCandidatePending(false);
+    }
+  }
+
   if (authLoading || !isAdmin) {
     return (
       <main className="mx-auto max-w-7xl px-6 py-16">
@@ -304,6 +372,111 @@ export default function AdminWorkspacePage() {
         <output className="mt-5 block rounded-lg border bg-muted/50 p-4 text-sm">
           {message}
         </output>
+      )}
+      {selectedCandidate && (
+        <form
+          onSubmit={saveCandidate}
+          className="mt-6 grid gap-4 rounded-2xl border bg-card p-6 md:grid-cols-2"
+        >
+          <div className="flex items-start justify-between md:col-span-2">
+            <div>
+              <h2 className="font-semibold">Edit candidate profile</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {selectedCandidate.email}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedCandidate(null)}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              Close
+            </button>
+          </div>
+          <label className="text-sm">
+            Full name
+            <input
+              required
+              value={candidateForm.name}
+              onChange={(event) =>
+                setCandidateForm({ ...candidateForm, name: event.target.value })
+              }
+              className="mt-2 h-11 w-full rounded-lg border bg-background px-3"
+            />
+          </label>
+          <label className="text-sm">
+            Phone
+            <input
+              value={candidateForm.phone}
+              onChange={(event) =>
+                setCandidateForm({
+                  ...candidateForm,
+                  phone: event.target.value,
+                })
+              }
+              className="mt-2 h-11 w-full rounded-lg border bg-background px-3"
+            />
+          </label>
+          <label className="text-sm md:col-span-2">
+            Skills (comma separated)
+            <input
+              value={candidateForm.skills}
+              onChange={(event) =>
+                setCandidateForm({
+                  ...candidateForm,
+                  skills: event.target.value,
+                })
+              }
+              className="mt-2 h-11 w-full rounded-lg border bg-background px-3"
+            />
+          </label>
+          <label className="text-sm">
+            Address
+            <textarea
+              value={candidateForm.address}
+              onChange={(event) =>
+                setCandidateForm({
+                  ...candidateForm,
+                  address: event.target.value,
+                })
+              }
+              className="mt-2 min-h-20 w-full rounded-lg border bg-background p-3"
+            />
+          </label>
+          <label className="text-sm">
+            Education
+            <textarea
+              value={candidateForm.education}
+              onChange={(event) =>
+                setCandidateForm({
+                  ...candidateForm,
+                  education: event.target.value,
+                })
+              }
+              className="mt-2 min-h-20 w-full rounded-lg border bg-background p-3"
+            />
+          </label>
+          <label className="text-sm md:col-span-2">
+            Experience
+            <textarea
+              value={candidateForm.experience}
+              onChange={(event) =>
+                setCandidateForm({
+                  ...candidateForm,
+                  experience: event.target.value,
+                })
+              }
+              className="mt-2 min-h-20 w-full rounded-lg border bg-background p-3"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={candidatePending}
+            className="h-11 rounded-lg bg-primary text-sm font-medium text-primary-foreground disabled:opacity-60 md:col-span-2"
+          >
+            {candidatePending ? "Saving..." : "Save candidate"}
+          </button>
+        </form>
       )}
 
       {showCreateForm && (
@@ -553,6 +726,13 @@ export default function AdminWorkspacePage() {
                                       : "Activate"}
                                 </button>
                               ))}
+                              <button
+                                type="button"
+                                onClick={() => editCandidate(candidate)}
+                                className="rounded-lg border px-3 py-2 text-xs hover:bg-muted"
+                              >
+                                Edit
+                              </button>
                             </div>
                           )}
                         </td>

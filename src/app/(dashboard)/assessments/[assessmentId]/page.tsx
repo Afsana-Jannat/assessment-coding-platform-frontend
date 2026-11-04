@@ -6,10 +6,13 @@ import { type FormEvent, useEffect, useState } from "react";
 import {
   type Assessment,
   createQuestion,
+  deleteAssessment,
+  deleteQuestion,
   evaluateAnswer,
   getAssessment,
   getQuestions,
   type Question,
+  updateAssessment,
 } from "@/api/recruiter.api";
 
 export default function AssessmentQuestionsPage() {
@@ -36,6 +39,15 @@ export default function AssessmentQuestionsPage() {
     feedback: "",
   });
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [isSavingAssessment, setIsSavingAssessment] = useState(false);
+  const [assessmentForm, setAssessmentForm] = useState({
+    title: "",
+    description: "",
+    instructions: "",
+    durationMinutes: 60,
+    totalMarks: 100,
+    passingMarks: 40,
+  });
 
   useEffect(() => {
     Promise.all([getAssessment(assessmentId), getQuestions(assessmentId)])
@@ -43,6 +55,14 @@ export default function AssessmentQuestionsPage() {
         setAssessment({
           title: assessmentResponse.data.title,
           status: assessmentResponse.data.status,
+        });
+        setAssessmentForm({
+          title: assessmentResponse.data.title,
+          description: assessmentResponse.data.description ?? "",
+          instructions: assessmentResponse.data.instructions ?? "",
+          durationMinutes: assessmentResponse.data.durationMinutes,
+          totalMarks: assessmentResponse.data.totalMarks,
+          passingMarks: assessmentResponse.data.passingMarks,
         });
         const data = questionsResponse.data;
         setQuestions(Array.isArray(data) ? data : data.questions);
@@ -67,6 +87,7 @@ export default function AssessmentQuestionsPage() {
       setMessage("MCQ questions need at least two non-empty options.");
       return;
     }
+
     setIsSubmitting(true);
     try {
       const question = await createQuestion(assessmentId, {
@@ -98,6 +119,58 @@ export default function AssessmentQuestionsPage() {
       );
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function saveAssessment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isSavingAssessment) return;
+    setIsSavingAssessment(true);
+    setMessage("");
+    try {
+      const { data } = await updateAssessment(assessmentId, {
+        title: assessmentForm.title.trim(),
+        description: assessmentForm.description.trim() || null,
+        instructions: assessmentForm.instructions.trim() || null,
+        durationMinutes: assessmentForm.durationMinutes,
+        totalMarks: assessmentForm.totalMarks,
+        passingMarks: assessmentForm.passingMarks,
+      });
+      setAssessment({ title: data.title, status: data.status });
+      setMessage("Assessment details updated.");
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Could not update assessment",
+      );
+    } finally {
+      setIsSavingAssessment(false);
+    }
+  }
+
+  async function removeQuestion(questionId: string) {
+    if (!window.confirm("Delete this question from the draft?")) return;
+    try {
+      await deleteQuestion(assessmentId, questionId);
+      setQuestions((current) =>
+        current.filter((question) => question.id !== questionId),
+      );
+      setMessage("Question deleted.");
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Could not delete question",
+      );
+    }
+  }
+
+  async function removeAssessment() {
+    if (!window.confirm("Delete this draft assessment?")) return;
+    try {
+      await deleteAssessment(assessmentId);
+      window.location.assign("/dashboard");
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Could not delete assessment",
+      );
     }
   }
 
@@ -152,6 +225,109 @@ export default function AssessmentQuestionsPage() {
         <p className="mt-6 rounded-lg border bg-muted/50 p-4 text-sm">
           {message}
         </p>
+      )}
+      {assessment?.status === "DRAFT" && (
+        <form
+          onSubmit={saveAssessment}
+          className="mt-8 grid gap-4 rounded-2xl border bg-card p-6 md:grid-cols-2"
+        >
+          <h2 className="font-semibold md:col-span-2">Assessment details</h2>
+          <input
+            required
+            value={assessmentForm.title}
+            onChange={(event) =>
+              setAssessmentForm({
+                ...assessmentForm,
+                title: event.target.value,
+              })
+            }
+            className="h-11 rounded-lg border bg-background px-3 md:col-span-2"
+            placeholder="Assessment title"
+          />
+          <textarea
+            value={assessmentForm.description}
+            onChange={(event) =>
+              setAssessmentForm({
+                ...assessmentForm,
+                description: event.target.value,
+              })
+            }
+            className="min-h-20 rounded-lg border bg-background p-3"
+            placeholder="Description"
+          />
+          <textarea
+            value={assessmentForm.instructions}
+            onChange={(event) =>
+              setAssessmentForm({
+                ...assessmentForm,
+                instructions: event.target.value,
+              })
+            }
+            className="min-h-20 rounded-lg border bg-background p-3"
+            placeholder="Candidate instructions"
+          />
+          <label className="text-sm">
+            Duration (minutes)
+            <input
+              min={1}
+              type="number"
+              value={assessmentForm.durationMinutes}
+              onChange={(event) =>
+                setAssessmentForm({
+                  ...assessmentForm,
+                  durationMinutes: Number(event.target.value),
+                })
+              }
+              className="mt-2 h-11 w-full rounded-lg border bg-background px-3"
+            />
+          </label>
+          <label className="text-sm">
+            Total marks
+            <input
+              min={1}
+              type="number"
+              value={assessmentForm.totalMarks}
+              onChange={(event) =>
+                setAssessmentForm({
+                  ...assessmentForm,
+                  totalMarks: Number(event.target.value),
+                })
+              }
+              className="mt-2 h-11 w-full rounded-lg border bg-background px-3"
+            />
+          </label>
+          <label className="text-sm">
+            Passing marks
+            <input
+              min={1}
+              type="number"
+              value={assessmentForm.passingMarks}
+              onChange={(event) =>
+                setAssessmentForm({
+                  ...assessmentForm,
+                  passingMarks: Number(event.target.value),
+                })
+              }
+              className="mt-2 h-11 w-full rounded-lg border bg-background px-3"
+            />
+          </label>
+          <div className="flex gap-3 md:col-span-2">
+            <button
+              type="submit"
+              disabled={isSavingAssessment}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+            >
+              {isSavingAssessment ? "Saving..." : "Save details"}
+            </button>
+            <button
+              type="button"
+              onClick={removeAssessment}
+              className="rounded-lg border border-destructive/40 px-4 py-2 text-sm text-destructive"
+            >
+              Delete draft
+            </button>
+          </div>
+        </form>
       )}
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_1.2fr]">
         {isLoading ? (
@@ -292,6 +468,15 @@ export default function AssessmentQuestionsPage() {
                   </span>
                 </div>
                 <p className="mt-3 font-medium">{question.questionText}</p>
+                {assessment?.status === "DRAFT" && (
+                  <button
+                    type="button"
+                    onClick={() => removeQuestion(question.id)}
+                    className="mt-4 text-sm text-destructive hover:underline"
+                  >
+                    Delete question
+                  </button>
+                )}
                 {question.options && (
                   <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                     {question.options.map((option) => (
