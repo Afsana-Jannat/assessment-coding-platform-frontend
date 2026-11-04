@@ -95,9 +95,12 @@ export default function DashboardPage() {
   const [form, setForm] = useState({
     title: "",
     description: "",
+    instructions: "",
     durationMinutes: 60,
     totalMarks: 100,
     passingMarks: 40,
+    startAt: "",
+    endAt: "",
   });
 
   useEffect(() => {
@@ -134,7 +137,11 @@ export default function DashboardPage() {
   async function submitAssessment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
-      const response = await createAssessment(form);
+      const response = await createAssessment({
+        ...form,
+        startAt: form.startAt || null,
+        endAt: form.endAt || null,
+      });
       setAssessments((current) => [response.data, ...current]);
       setShowCreate(false);
       setMessage("Assessment created as draft.");
@@ -292,6 +299,14 @@ export default function DashboardPage() {
                 }
                 className="min-h-24 rounded-lg border bg-background p-3 md:col-span-2"
               />
+              <textarea
+                placeholder="Candidate instructions"
+                value={form.instructions}
+                onChange={(e) =>
+                  setForm({ ...form, instructions: e.target.value })
+                }
+                className="min-h-24 rounded-lg border bg-background p-3 md:col-span-2"
+              />
               <label className="text-sm">
                 Duration (minutes)
                 <input
@@ -331,6 +346,26 @@ export default function DashboardPage() {
                   onChange={(e) =>
                     setForm({ ...form, passingMarks: Number(e.target.value) })
                   }
+                  className="mt-2 h-11 w-full rounded-lg border bg-background px-3"
+                />
+              </label>
+              <label className="text-sm">
+                Opens at (optional)
+                <input
+                  type="datetime-local"
+                  value={form.startAt}
+                  onChange={(e) =>
+                    setForm({ ...form, startAt: e.target.value })
+                  }
+                  className="mt-2 h-11 w-full rounded-lg border bg-background px-3"
+                />
+              </label>
+              <label className="text-sm">
+                Closes at (optional)
+                <input
+                  type="datetime-local"
+                  value={form.endAt}
+                  onChange={(e) => setForm({ ...form, endAt: e.target.value })}
                   className="mt-2 h-11 w-full rounded-lg border bg-background px-3"
                 />
               </label>

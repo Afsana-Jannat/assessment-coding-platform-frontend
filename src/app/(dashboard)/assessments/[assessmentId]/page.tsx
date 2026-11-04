@@ -13,6 +13,7 @@ import {
   getQuestions,
   type Question,
   updateAssessment,
+  updateQuestion,
 } from "@/api/recruiter.api";
 
 export default function AssessmentQuestionsPage() {
@@ -39,6 +40,9 @@ export default function AssessmentQuestionsPage() {
     feedback: "",
   });
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(
+    null,
+  );
   const [isSavingAssessment, setIsSavingAssessment] = useState(false);
   const [assessmentForm, setAssessmentForm] = useState({
     title: "",
@@ -47,6 +51,8 @@ export default function AssessmentQuestionsPage() {
     durationMinutes: 60,
     totalMarks: 100,
     passingMarks: 40,
+    startAt: "",
+    endAt: "",
   });
 
   useEffect(() => {
@@ -63,6 +69,12 @@ export default function AssessmentQuestionsPage() {
           durationMinutes: assessmentResponse.data.durationMinutes,
           totalMarks: assessmentResponse.data.totalMarks,
           passingMarks: assessmentResponse.data.passingMarks,
+          startAt: assessmentResponse.data.startAt
+            ? assessmentResponse.data.startAt.slice(0, 16)
+            : "",
+          endAt: assessmentResponse.data.endAt
+            ? assessmentResponse.data.endAt.slice(0, 16)
+            : "",
         });
         const data = questionsResponse.data;
         setQuestions(Array.isArray(data) ? data : data.questions);
@@ -90,11 +102,14 @@ export default function AssessmentQuestionsPage() {
 
     setIsSubmitting(true);
     try {
-      const question = await createQuestion(assessmentId, {
+      const payload = {
         questionText: form.questionText.trim(),
         type: form.type,
         marks: form.marks,
-        order: questions.length + 1,
+        order: editingQuestionId
+          ? (questions.find((question) => question.id === editingQuestionId)
+              ?.order ?? questions.length + 1)
+          : questions.length + 1,
         difficulty: form.difficulty,
         ...(form.type === "MCQ"
           ? {
@@ -104,15 +119,34 @@ export default function AssessmentQuestionsPage() {
               })),
             }
           : {}),
-      });
-      setQuestions((current) => [...current, question.data]);
+      };
+      if (editingQuestionId) {
+        const question = await updateQuestion(
+          assessmentId,
+          editingQuestionId,
+          payload,
+        );
+        setQuestions((current) =>
+          current.map((item) =>
+            item.id === editingQuestionId ? question.data : item,
+          ),
+        );
+      } else {
+        const question = await createQuestion(assessmentId, payload);
+        setQuestions((current) => [...current, question.data]);
+      }
+      setEditingQuestionId(null);
       setForm((current) => ({
         ...current,
         questionText: "",
         options: ["", "", ""],
         correctOption: 0,
       }));
-      setMessage("Question added to the draft.");
+      setMessage(
+        editingQuestionId
+          ? "Question updated in the draft."
+          : "Question added to the draft.",
+      );
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Could not create question",
@@ -135,6 +169,8 @@ export default function AssessmentQuestionsPage() {
         durationMinutes: assessmentForm.durationMinutes,
         totalMarks: assessmentForm.totalMarks,
         passingMarks: assessmentForm.passingMarks,
+        startAt: assessmentForm.startAt || null,
+        endAt: assessmentForm.endAt || null,
       });
       setAssessment({ title: data.title, status: data.status });
       setMessage("Assessment details updated.");
@@ -160,6 +196,23 @@ export default function AssessmentQuestionsPage() {
         error instanceof Error ? error.message : "Could not delete question",
       );
     }
+  }
+
+  function editQuestion(question: Question) {
+    const options = question.options?.map((option) => option.optionText) ?? [];
+    const correctOption = question.options?.findIndex(
+      (option) => option.isCorrect,
+    );
+    setEditingQuestionId(question.id);
+    setForm({
+      questionText: question.questionText,
+      type: question.type,
+      marks: question.marks,
+      difficulty: question.difficulty,
+      options: options.length >= 2 ? options : ["", "", ""],
+      correctOption:
+        correctOption !== undefined && correctOption >= 0 ? correctOption : 0,
+    });
   }
 
   async function removeAssessment() {
@@ -311,6 +364,34 @@ export default function AssessmentQuestionsPage() {
               className="mt-2 h-11 w-full rounded-lg border bg-background px-3"
             />
           </label>
+          <label className="text-sm">
+            Opens at (optional)
+            <input
+              type="datetime-local"
+              value={assessmentForm.startAt}
+              onChange={(event) =>
+                setAssessmentForm({
+                  ...assessmentForm,
+                  startAt: event.target.value,
+                })
+              }
+              className="mt-2 h-11 w-full rounded-lg border bg-background px-3"
+            />
+          </label>
+          <label className="text-sm">
+            Closes at (optional)
+            <input
+              type="datetime-local"
+              value={assessmentForm.endAt}
+              onChange={(event) =>
+                setAssessmentForm({
+                  ...assessmentForm,
+                  endAt: event.target.value,
+                })
+              }
+              className="mt-2 h-11 w-full rounded-lg border bg-background px-3"
+            />
+          </label>
           <div className="flex gap-3 md:col-span-2">
             <button
               type="submit"
@@ -343,7 +424,28 @@ export default function AssessmentQuestionsPage() {
             onSubmit={submit}
             className="space-y-4 rounded-2xl border bg-card p-6"
           >
-            <h2 className="font-semibold">Add a question</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-semibold">
+                {editingQuestionId ? "Edit question" : "Add a question"}
+              </h2>
+              {editingQuestionId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingQuestionId(null);
+                    setForm({
+                      ...form,
+                      questionText: "",
+                      options: ["", "", ""],
+                      correctOption: 0,
+                    });
+                  }}
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Cancel edit
+                </button>
+              )}
+            </div>
             <textarea
               required
               value={form.questionText}
@@ -469,13 +571,22 @@ export default function AssessmentQuestionsPage() {
                 </div>
                 <p className="mt-3 font-medium">{question.questionText}</p>
                 {assessment?.status === "DRAFT" && (
-                  <button
-                    type="button"
-                    onClick={() => removeQuestion(question.id)}
-                    className="mt-4 text-sm text-destructive hover:underline"
-                  >
-                    Delete question
-                  </button>
+                  <div className="mt-4 flex gap-4 text-sm">
+                    <button
+                      type="button"
+                      onClick={() => editQuestion(question)}
+                      className="text-primary hover:underline"
+                    >
+                      Edit question
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeQuestion(question.id)}
+                      className="text-destructive hover:underline"
+                    >
+                      Delete question
+                    </button>
+                  </div>
                 )}
                 {question.options && (
                   <ul className="mt-3 space-y-2 text-sm text-muted-foreground">

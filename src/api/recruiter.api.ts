@@ -26,6 +26,8 @@ export const createAssessment = (payload: {
   durationMinutes: number;
   totalMarks: number;
   passingMarks: number;
+  startAt?: string | null;
+  endAt?: string | null;
 }) =>
   apiClient<ApiResponse<Assessment>>("/assessments", {
     method: "POST",
