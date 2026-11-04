@@ -106,8 +106,79 @@ export const declineInvitation = (invitationId: string) =>
 
 export type ReportData = Record<string, unknown>;
 
-export const getRecruiterReport = () =>
-  apiClient<ApiResponse<ReportData>>("/reports/overview");
+export const getRecruiterReport = (from?: string, to?: string) =>
+  apiClient<ApiResponse<ReportData>>(
+    `/reports/overview${reportDateQuery(from, to)}`,
+  );
 
-export const getAdminReport = () =>
-  apiClient<ApiResponse<ReportData>>("/reports/admin/overview");
+export const getAdminReport = (from?: string, to?: string) =>
+  apiClient<ApiResponse<ReportData>>(
+    `/reports/admin/overview${reportDateQuery(from, to)}`,
+  );
+
+function reportDateQuery(from?: string, to?: string) {
+  const params = new URLSearchParams();
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+export const getRecruiterRevenue = (from?: string, to?: string) =>
+  apiClient<ApiResponse<ReportData>>(
+    `/reports/revenue${reportDateQuery(from, to)}`,
+  );
+
+export const getAdminRevenue = (from?: string, to?: string) =>
+  apiClient<ApiResponse<ReportData>>(
+    `/reports/admin/revenue${reportDateQuery(from, to)}`,
+  );
+
+export const getAdminAssessmentReport = (from?: string, to?: string) =>
+  apiClient<ApiResponse<ReportData>>(
+    `/reports/admin/assessments${reportDateQuery(from, to)}`,
+  );
+
+export const getAdminCandidateReport = (from?: string, to?: string) =>
+  apiClient<ApiResponse<ReportData>>(
+    `/reports/admin/candidates${reportDateQuery(from, to)}`,
+  );
+
+export const getAssessmentReport = (assessmentId: string) =>
+  apiClient<ApiResponse<ReportData>>(`/reports/assessments/${assessmentId}`);
+
+export const getCandidateReport = (candidateId: string) =>
+  apiClient<ApiResponse<ReportData>>(`/reports/candidates/${candidateId}`);
+
+export type StripeCheckout = {
+  paymentId: string;
+  sessionId: string;
+  checkoutUrl: string | null;
+};
+
+export const createStripeCheckout = (assessmentId: string) =>
+  apiClient<ApiResponse<StripeCheckout>>(
+    "/payments/stripe/create-checkout-session",
+    {
+      method: "POST",
+      body: { assessmentId },
+    },
+  );
+
+export type Evaluation = {
+  id: string;
+  answerId: string;
+  marksObtained: number;
+  feedback?: string | null;
+  evaluatedAt: string;
+};
+
+export const evaluateAnswer = (payload: {
+  answerId: string;
+  marksObtained: number;
+  feedback?: string;
+}) =>
+  apiClient<ApiResponse<Evaluation>>("/evaluations", {
+    method: "POST",
+    body: payload,
+  });

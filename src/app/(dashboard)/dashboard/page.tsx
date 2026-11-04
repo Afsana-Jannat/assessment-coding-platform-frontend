@@ -9,6 +9,7 @@ import {
   acceptInvitation,
   createAssessment,
   createInvitation,
+  createStripeCheckout,
   declineInvitation,
   getAssessments,
   publishAssessment,
@@ -89,6 +90,7 @@ export default function DashboardPage() {
     string | null
   >(null);
   const [candidateId, setCandidateId] = useState("");
+  const [paymentPendingId, setPaymentPendingId] = useState("");
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -175,6 +177,23 @@ export default function DashboardPage() {
     }
   }
 
+  async function startStripeCheckout(assessment: Assessment) {
+    setPaymentPendingId(assessment.id);
+    setMessage("");
+    try {
+      const { data } = await createStripeCheckout(assessment.id);
+      if (!data.checkoutUrl) {
+        throw new Error("The payment provider did not return a checkout URL.");
+      }
+      window.location.assign(data.checkoutUrl);
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Could not start checkout",
+      );
+      setPaymentPendingId("");
+    }
+  }
+
   if (!user)
     return (
       <main className="mx-auto max-w-7xl px-6 py-16">
@@ -202,6 +221,14 @@ export default function DashboardPage() {
             View reports
           </Link>
         )}
+        {user.role === "ADMIN" && (
+          <Link
+            href="/Admin"
+            className="rounded-lg border px-4 py-2.5 text-center text-sm font-medium hover:bg-muted"
+          >
+            Admin workspace
+          </Link>
+        )}
         {user.role === "RECRUITER" && (
           <button
             type="button"
@@ -219,6 +246,11 @@ export default function DashboardPage() {
       )}
       {user.role === "RECRUITER" ? (
         <section className="mt-10 space-y-4">
+          <p className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-muted-foreground">
+            Stripe checkout is available, but the backend post-payment redirect
+            currently points to an unregistered route. Verify its success and
+            cancel handlers before using payments in production.
+          </p>
           {showCreate && (
             <form
               onSubmit={submitAssessment}
@@ -363,6 +395,16 @@ export default function DashboardPage() {
                     Invite candidate
                   </button>
                 )}
+                <button
+                  type="button"
+                  disabled={paymentPendingId === assessment.id}
+                  onClick={() => startStripeCheckout(assessment)}
+                  className="rounded-lg border px-4 py-2 text-sm hover:bg-muted disabled:opacity-50"
+                >
+                  {paymentPendingId === assessment.id
+                    ? "Opening checkout..."
+                    : "Pay BDT 100 (Stripe)"}
+                </button>
               </article>
             ))
           )}

@@ -6,6 +6,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import {
   type Assessment,
   createQuestion,
+  evaluateAnswer,
   getAssessment,
   getQuestions,
   type Question,
@@ -29,6 +30,12 @@ export default function AssessmentQuestionsPage() {
     options: ["", "", ""],
     correctOption: 0,
   });
+  const [evaluationForm, setEvaluationForm] = useState({
+    answerId: "",
+    marksObtained: 0,
+    feedback: "",
+  });
+  const [isEvaluating, setIsEvaluating] = useState(false);
 
   useEffect(() => {
     Promise.all([getAssessment(assessmentId), getQuestions(assessmentId)])
@@ -91,6 +98,34 @@ export default function AssessmentQuestionsPage() {
       );
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function submitEvaluation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isEvaluating) return;
+    setIsEvaluating(true);
+    setMessage("");
+    try {
+      await evaluateAnswer({
+        answerId: evaluationForm.answerId.trim(),
+        marksObtained: evaluationForm.marksObtained,
+        feedback: evaluationForm.feedback.trim() || undefined,
+      });
+      setEvaluationForm({
+        answerId: "",
+        marksObtained: 0,
+        feedback: "",
+      });
+      setMessage(
+        "Answer evaluated. The candidate's attempt score was updated.",
+      );
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Could not evaluate answer",
+      );
+    } finally {
+      setIsEvaluating(false);
     }
   }
 
@@ -277,6 +312,74 @@ export default function AssessmentQuestionsPage() {
           )}
         </section>
       </div>
+      {assessment && assessment.status !== "DRAFT" && (
+        <section className="mt-10 rounded-2xl border bg-card p-6">
+          <h2 className="text-xl font-semibold">Manual answer evaluation</h2>
+          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+            Evaluate written or coding answers and update the attempt score. The
+            backend does not currently provide a list of pending answers, so you
+            need the answer ID to submit an evaluation.
+          </p>
+          <form
+            onSubmit={submitEvaluation}
+            className="mt-5 grid gap-4 md:grid-cols-2"
+          >
+            <label className="text-sm md:col-span-2">
+              Answer ID
+              <input
+                required
+                value={evaluationForm.answerId}
+                onChange={(event) =>
+                  setEvaluationForm({
+                    ...evaluationForm,
+                    answerId: event.target.value,
+                  })
+                }
+                placeholder="Answer UUID"
+                className="mt-2 h-11 w-full rounded-lg border bg-background px-3"
+              />
+            </label>
+            <label className="text-sm">
+              Marks obtained
+              <input
+                required
+                type="number"
+                min={0}
+                step={1}
+                value={evaluationForm.marksObtained}
+                onChange={(event) =>
+                  setEvaluationForm({
+                    ...evaluationForm,
+                    marksObtained: Number(event.target.value),
+                  })
+                }
+                className="mt-2 h-11 w-full rounded-lg border bg-background px-3"
+              />
+            </label>
+            <label className="text-sm">
+              Feedback
+              <textarea
+                maxLength={1000}
+                value={evaluationForm.feedback}
+                onChange={(event) =>
+                  setEvaluationForm({
+                    ...evaluationForm,
+                    feedback: event.target.value,
+                  })
+                }
+                className="mt-2 min-h-11 w-full rounded-lg border bg-background p-3"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={isEvaluating}
+              className="h-11 rounded-lg bg-primary font-medium text-primary-foreground disabled:opacity-60 md:col-span-2"
+            >
+              {isEvaluating ? "Saving evaluation..." : "Submit evaluation"}
+            </button>
+          </form>
+        </section>
+      )}
     </main>
   );
 }
