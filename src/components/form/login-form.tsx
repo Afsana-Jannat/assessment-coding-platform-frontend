@@ -33,56 +33,63 @@ export default function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <div>
-        <h1 className="text-3xl font-semibold">Welcome back</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Sign in to manage assessments and attempts.
-        </p>
-      </div>
-      <label className="block text-sm font-medium">
+    <form onSubmit={handleSubmit} className="lamp-login-form">
+      <label className="lamp-input-group">
         Email
-        <input
-          required
-          type="email"
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-          className="mt-2 h-11 w-full rounded-lg border bg-background px-3"
-        />
+        <span className="lamp-input-wrap">
+          <input
+            required
+            type="email"
+            value={form.email}
+            placeholder="you@company.com"
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          />
+        </span>
       </label>
-      <label className="block text-sm font-medium">
+      <label className="lamp-input-group">
         Password
-        <input
-          required
-          minLength={6}
-          type="password"
-          value={form.password}
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
-          className="mt-2 h-11 w-full rounded-lg border bg-background px-3"
-        />
+        <span className="lamp-input-wrap">
+          <input
+            required
+            minLength={6}
+            type="password"
+            value={form.password}
+            placeholder="Enter your password"
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+          />
+        </span>
       </label>
-      {error && (
-        <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-          {error}
-        </p>
-      )}
-      <button
-        type="submit"
-        disabled={pending}
-        className="h-11 w-full rounded-lg bg-primary font-medium text-primary-foreground disabled:opacity-60"
-      >
-        {pending ? "Signing in..." : "Sign in"}
+      {error && <p className="lamp-form-error">{error}</p>}
+      <div className="lamp-forgot-row">
+        <span className="lamp-forgot">Secure account access</span>
+      </div>
+      <button type="submit" disabled={pending} className="lamp-submit">
+        {pending ? "Authenticating..." : "Sign in to workspace"}
       </button>
-      <GoogleLoginButton />
-      <p className="text-center text-sm text-muted-foreground">
+      <div className="lamp-or-divider">
+        <span />
+        <small>OR CONTINUE WITH</small>
+        <span />
+      </div>
+      <div className="lamp-google">
+        <GoogleLoginButton />
+      </div>
+      <p className="lamp-register">
         New here?{" "}
-        <Link
-          className="font-medium text-primary hover:underline"
-          href="/register"
-        >
+        <Link className="font-medium" href="/register">
           Create a candidate account
         </Link>
       </p>
+      <div className="lamp-merchant-links">
+        <Link href="/register">
+          <span>Recruiter</span>
+          <span>workspace →</span>
+        </Link>
+        <Link href="/apply">
+          <span>Candidate</span>
+          <span>access →</span>
+        </Link>
+      </div>
     </form>
   );
 }
