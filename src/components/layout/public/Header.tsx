@@ -16,18 +16,21 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="border-b bg-background/90 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-        <Link href="/" className="flex items-center gap-2 font-semibold">
-          <span className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground">
+    <header className="sticky top-0 z-50 border-b border-border/70 bg-background/80 backdrop-blur-xl">
+      <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center justify-between px-6">
+        <Link
+          href="/"
+          className="flex items-center gap-3 font-semibold tracking-tight"
+        >
+          <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-primary to-cyan-300 text-sm text-primary-foreground shadow-lg shadow-primary/20">
             DA
           </span>
-          <span>Developer Assessments</span>
+          <span className="hidden sm:inline">Developer Assessments</span>
         </Link>
-        <nav className="flex items-center gap-5 text-sm">
+        <nav className="flex items-center gap-3 text-sm">
           <Link
             href="/about-us"
-            className="text-muted-foreground hover:text-foreground"
+            className="mr-2 hidden text-muted-foreground transition hover:text-foreground sm:inline"
           >
             How it works
           </Link>
@@ -38,7 +41,7 @@ export default function Header() {
               </span>
               <Link
                 href="/dashboard"
-                className="rounded-lg bg-primary px-4 py-2 text-primary-foreground"
+                className="rounded-lg bg-primary px-4 py-2 text-primary-foreground transition hover:bg-primary/90"
               >
                 Dashboard
               </Link>
@@ -50,7 +53,7 @@ export default function Header() {
                   router.push("/login");
                   router.refresh();
                 }}
-                className="rounded-lg border px-4 py-2 hover:bg-muted"
+                className="rounded-lg border border-border px-4 py-2 transition hover:bg-muted"
               >
                 Sign out
               </button>
@@ -58,7 +61,7 @@ export default function Header() {
           ) : (
             <Link
               href="/login"
-              className="rounded-lg border px-4 py-2 hover:bg-muted"
+              className="rounded-lg border border-border px-4 py-2 transition hover:bg-muted"
             >
               Sign in
             </Link>
