@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useParams, useRouter } from "next/navigation";
-import { type FormEvent, useEffect, useState } from "react";
-import apiClient from "@/lib/apiClient";
+import { useParams, useRouter } from 'next/navigation';
+import { type FormEvent, useEffect, useState } from 'react';
+import apiClient from '@/lib/apiClient';
 
 type Question = {
   id: string;
   questionText: string;
-  type: "MCQ" | "WRITTEN" | "CODING";
+  type: 'MCQ' | 'WRITTEN' | 'CODING';
   marks: number;
   options?: { id: string; optionText: string }[];
 };
@@ -25,16 +25,17 @@ export default function AttemptPage() {
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState('');
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     apiClient<{ data: Attempt }>(`/attempts/${attemptId}`)
       .then((response) => setAttempt(response.data))
       .catch((error) =>
         setMessage(
-          error instanceof Error ? error.message : "Could not load attempt",
-        ),
+          error instanceof Error ? error.message : 'Could not load attempt'
+        )
       );
   }, [attemptId]);
 
@@ -43,10 +44,10 @@ export default function AttemptPage() {
     const updateRemaining = () => {
       const remaining = Math.max(
         0,
-        Math.floor((new Date(attempt.expiresAt).getTime() - Date.now()) / 1000),
+        Math.floor((new Date(attempt.expiresAt).getTime() - Date.now()) / 1000)
       );
       setSecondsLeft(remaining);
-      if (remaining === 0) setMessage("This attempt has expired.");
+      if (remaining === 0) setMessage('This attempt has expired.');
     };
     updateRemaining();
     const timer = window.setInterval(updateRemaining, 1000);
@@ -55,51 +56,95 @@ export default function AttemptPage() {
 
   useEffect(() => {
     if (!attempt) return;
-    if (attempt.questions) {
-      setQuestions(attempt.questions);
-      return;
-    }
-    setMessage(
-      "The backend did not include questions in this attempt. Please ask the administrator to enable the candidate attempt questions endpoint.",
-    );
+
+    apiClient<{
+      data: {
+        attemptId: string;
+        expiresAt: string;
+        questions: Question[];
+      };
+    }>(`/attempts/${attempt.id}/questions`)
+      .then((response) => {
+        setQuestions(response.data.questions);
+      })
+      .catch((error) => {
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : 'Could not load assessment questions'
+        );
+      });
   }, [attempt]);
 
   async function saveAnswer(
     question: Question,
     value: string,
-    answerText = "",
-  ) {
+    answerText = ''
+  ): Promise<boolean> {
     setAnswers((current) => ({ ...current, [question.id]: value }));
+
     try {
-      await apiClient(`/answers`, {
-        method: "POST",
+      await apiClient('/answers', {
+        method: 'POST',
         body: {
           attemptId,
           questionId: question.id,
-          ...(question.type === "MCQ"
+          ...(question.type === 'MCQ'
             ? { selectedOptionId: value }
             : { answerText: answerText || value }),
         },
       });
+
+      return true;
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Could not save answer",
+        error instanceof Error ? error.message : 'Could not save answer'
       );
+      return false;
     }
   }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+
+    if (questions.length === 0) {
+      setMessage('No questions available to submit.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setMessage('');
+
     try {
+      // Save all answers before submitting the attempt.
+      for (const question of questions) {
+        const answer = answers[question.id];
+
+        if (answer === undefined || answer.trim() === '') {
+          continue;
+        }
+
+        const saved = await saveAnswer(question, answer);
+
+        if (!saved) {
+          throw new Error(
+            'Could not save all answers. Please try submitting again.'
+          );
+        }
+      }
+
       await apiClient(`/attempts/${attemptId}/submit`, {
-        method: "POST",
+        method: 'POST',
         body: {},
       });
-      router.push("/dashboard");
+
+      router.push('/dashboard');
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Could not submit attempt",
+        error instanceof Error ? error.message : 'Could not submit attempt'
       );
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -107,7 +152,7 @@ export default function AttemptPage() {
     return (
       <main className="mx-auto max-w-3xl px-6 py-16">
         <p className="text-muted-foreground">
-          {message || "Loading attempt..."}
+          {message || 'Loading attempt...'}
         </p>
       </main>
     );
@@ -148,7 +193,7 @@ export default function AttemptPage() {
               Question {index + 1} · {question.marks} marks
             </legend>
             <p className="mt-2 font-medium">{question.questionText}</p>
-            {question.type === "MCQ" ? (
+            {question.type === 'MCQ' ? (
               <div className="mt-5 space-y-3">
                 {question.options?.map((option) => (
                   <label
@@ -169,7 +214,7 @@ export default function AttemptPage() {
             ) : (
               <textarea
                 required
-                value={answers[question.id] ?? ""}
+                value={answers[question.id] ?? ''}
                 onChange={(event) =>
                   setAnswers((current) => ({
                     ...current,
@@ -183,14 +228,22 @@ export default function AttemptPage() {
             )}
           </fieldset>
         ))}
+
         <button
           type="submit"
-          disabled={attempt.status !== "IN_PROGRESS" || secondsLeft === 0}
-          className="h-11 w-full rounded-lg bg-primary font-medium text-primary-foreground"
+          disabled={
+            isSubmitting ||
+            attempt.status !== 'IN_PROGRESS' ||
+            secondsLeft === 0 ||
+            questions.length === 0
+          }
+          className="h-11 w-full rounded-lg bg-primary font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {secondsLeft === null
-            ? "Submit assessment"
-            : `Submit assessment (${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, "0")})`}
+          {isSubmitting
+            ? 'Submitting...'
+            : secondsLeft === null
+              ? 'Submit assessment'
+              : `Submit assessment (${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')})`}
         </button>
       </form>
     </main>
