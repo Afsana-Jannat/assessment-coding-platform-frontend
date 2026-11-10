@@ -1,7 +1,8 @@
 import { ofetch } from 'ofetch';
 
 const apiBaseUrl =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:5000';
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  'https://developer-assessment-coding-platfor-phi.vercel.app';
 
 const baseURL = `${apiBaseUrl.replace(/\/$/, '')}/api/v1`;
 
