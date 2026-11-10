@@ -1,24 +1,42 @@
-import { ofetch } from 'ofetch';
+import { ofetch } from "ofetch";
 
-const apiBaseUrl =
-  process.env.NEXT_PUBLIC_API_BASE_URL ??
-  'https://developer-assessment-coding-platfor-phi.vercel.app';
+const DEFAULT_API_BASE_URL =
+  "https://developer-assessment-coding-platfor-phi.vercel.app";
 
-const baseURL = `${apiBaseUrl.replace(/\/$/, '')}/api/v1`;
+function getApiBaseUrl() {
+  const configuredApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-const ACCESS_TOKEN_KEY = 'assessment_access_token';
-const REFRESH_TOKEN_KEY = 'assessment_refresh_token';
+  if (!configuredApiBaseUrl) return DEFAULT_API_BASE_URL;
+  if (process.env.NODE_ENV !== "production") return configuredApiBaseUrl;
+
+  const hostname = new URL(configuredApiBaseUrl).hostname.toLowerCase();
+  const isLoopbackHost = [
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "[::1]",
+  ].includes(hostname);
+
+  return isLoopbackHost ? DEFAULT_API_BASE_URL : configuredApiBaseUrl;
+}
+
+const apiBaseUrl = getApiBaseUrl();
+
+const baseURL = `${apiBaseUrl.replace(/\/$/, "")}/api/v1`;
+
+const ACCESS_TOKEN_KEY = "assessment_access_token";
+const REFRESH_TOKEN_KEY = "assessment_refresh_token";
 
 let refreshPromise: Promise<string> | null = null;
 
 function getAccessToken() {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === "undefined") return null;
 
   return window.sessionStorage.getItem(ACCESS_TOKEN_KEY);
 }
 
 function clearSession() {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
 
   window.sessionStorage.removeItem(ACCESS_TOKEN_KEY);
   window.sessionStorage.removeItem(REFRESH_TOKEN_KEY);
@@ -32,19 +50,19 @@ async function refreshAccessToken(): Promise<string> {
         accessToken: string;
         refreshToken: string;
       };
-    }>('/auth/refresh-token', {
+    }>("/auth/refresh-token", {
       baseURL,
-      method: 'POST',
-      credentials: 'include',
+      method: "POST",
+      credentials: "include",
       headers: {
-        Accept: 'application/json',
+        Accept: "application/json",
       },
     })
       .then((response) => {
         const { accessToken, refreshToken } = response.data;
 
         if (!accessToken || !refreshToken) {
-          throw new Error('Invalid token refresh response');
+          throw new Error("Invalid token refresh response");
         }
 
         window.sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
@@ -66,20 +84,20 @@ async function refreshAccessToken(): Promise<string> {
 
 const rawApiClient = ofetch.create({
   baseURL,
-  credentials: 'include',
+  credentials: "include",
 
   headers: {
-    Accept: 'application/json',
+    Accept: "application/json",
   },
 
   onRequest({ options }) {
     const headers = new Headers(options.headers);
     const accessToken = getAccessToken();
 
-    headers.set('Accept', 'application/json');
+    headers.set("Accept", "application/json");
 
     if (accessToken) {
-      headers.set('Authorization', `Bearer ${accessToken}`);
+      headers.set("Authorization", `Bearer ${accessToken}`);
     }
 
     options.headers = headers;
@@ -88,16 +106,16 @@ const rawApiClient = ofetch.create({
 
 async function apiClient<T>(
   request: Parameters<typeof rawApiClient<T>>[0],
-  options: Parameters<typeof rawApiClient<T>>[1] = {}
+  options: Parameters<typeof rawApiClient<T>>[1] = {},
 ): Promise<T> {
   try {
     return await rawApiClient<T>(request, options);
   } catch (error) {
     if (
-      typeof window === 'undefined' ||
+      typeof window === "undefined" ||
       !error ||
-      typeof error !== 'object' ||
-      !('response' in error) ||
+      typeof error !== "object" ||
+      !("response" in error) ||
       (error as { response?: { status?: number } }).response?.status !== 401
     ) {
       throw error;
@@ -106,32 +124,32 @@ async function apiClient<T>(
     const url = String(request);
 
     if (
-      url.includes('/auth/login') ||
-      url.includes('/auth/register') ||
-      url.includes('/auth/google') ||
-      url.includes('/auth/refresh-token')
+      url.includes("/auth/login") ||
+      url.includes("/auth/register") ||
+      url.includes("/auth/google") ||
+      url.includes("/auth/refresh-token")
     ) {
       throw error;
     }
 
     const headers = new Headers(options.headers);
-    const alreadyRetried = headers.get('x-auth-retried') === 'true';
+    const alreadyRetried = headers.get("x-auth-retried") === "true";
 
     if (alreadyRetried) {
       clearSession();
       throw error;
     }
 
-    headers.set('x-auth-retried', 'true');
+    headers.set("x-auth-retried", "true");
 
     const newAccessToken = await refreshAccessToken();
 
-    headers.set('Authorization', `Bearer ${newAccessToken}`);
+    headers.set("Authorization", `Bearer ${newAccessToken}`);
 
     return rawApiClient<T>(request, {
       ...options,
       headers,
-      credentials: 'include',
+      credentials: "include",
     });
   }
 }
